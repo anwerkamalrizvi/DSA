@@ -95,7 +95,8 @@ Flight* findFlight(string number)
 
 int main() 
 {
-    addFlight("AA123");
+    addFlight("PK714");
+    addFlight("PK116");
     
     int choice;
     string name, flightNum;
@@ -198,3 +199,4 @@ int main()
     return 0;
 
 }
+
