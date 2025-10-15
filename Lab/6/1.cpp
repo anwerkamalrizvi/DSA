@@ -99,13 +99,6 @@ int main()
     
     cout << string(60, '=') << endl;
     cout << "\nFinal Answer: " << (isPalindrome ? "PALINDROME" : "NOT PALINDROME") << endl;
-    
-    // Additional test cases
-    cout << "\n\n*** TESTING OTHER EXAMPLES ***" << endl;
-    
-    checkPalindrome("RACECAR");
-    checkPalindrome("HELLO");
-    checkPalindrome("MADAM");
-    
     return 0;
+
 }
