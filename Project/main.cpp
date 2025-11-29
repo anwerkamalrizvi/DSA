@@ -32,17 +32,7 @@
 #include <cmath>
 #include <cstdlib>
 
-using std::string;
-using std::cout;
-using std::cin;
-using std::endl;
-using std::setw;
-using std::setfill;
-using std::left;
-using std::right;
-using std::fixed;
-using std::setprecision;
-using std::stringstream;
+using namespace std;
 
 // ==================== MANUAL PAIR IMPLEMENTATION ====================
 
@@ -2441,3 +2431,4 @@ int main() {
     
     return 0;
 }
+
