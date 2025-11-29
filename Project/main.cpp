@@ -2,340 +2,655 @@
 ================================================================================
     SMART RAILWAY SCHEDULING SYSTEM - KARACHI, PAKISTAN
     Advanced Data Structures & Algorithms Project
+    100% MANUAL IMPLEMENTATION - NO STL CONTAINERS
     
-    Features:
-    - Graph-based station network
-    - Dijkstra's shortest path algorithm
-    - All possible paths finding (DFS/BFS)
-    - Priority queue for train scheduling
-    - Hash table for O(1) lookups
-    - Queue for passenger management
-    - Advanced sorting algorithms
-    - Real-time delay management
+    Manual Data Structures:
+    - Custom Vector (Dynamic Array)
+    - Custom Map (AVL Tree)
+    - Custom HashTable (Quadratic Probing)
+    - Custom Set (AVL Tree)
+    - Custom Queue
+    - Custom PriorityQueue (Heap)
+    - Custom Pair
+    - Dijkstra's Algorithm
+    - DFS for All Paths
 ================================================================================
 */
+
 #ifdef _WIN32
 #include <windows.h>
 #endif
+
 #include <iostream>
-#include <vector>
-#include <queue>
-#include <unordered_map>
-#include <unordered_set>
-#include <map>
-#include <set>
-#include <algorithm>
 #include <string>
 #include <limits>
 #include <iomanip>
 #include <ctime>
 #include <sstream>
-#include <memory>
-#include <functional>
+#include <cmath>
 #include <climits>
+#include <cstdlib>
+#include <stdexcept>
 
 using namespace std;
 
-// ==================== UTILITY CLASSES ====================
+// ==================== MANUAL PAIR IMPLEMENTATION ====================
 
-class Time {
-private:
-    int hours, minutes;
+template<typename T1, typename T2>
+struct Pair {
+    T1 first;
+    T2 second;
     
-public:
-    Time(int h = 0, int m = 0) : hours(h % 24), minutes(m % 60) {}
+    Pair() {}
+    Pair(T1 f, T2 s) : first(f), second(s) {}
     
-    string toString() const {
-        stringstream ss;
-        ss << setfill('0') << setw(2) << hours << ":" 
-           << setw(2) << minutes;
-        return ss.str();
+    bool operator==(const Pair& other) const {
+        return first == other.first && second == other.second;
     }
     
-    int toMinutes() const { return hours * 60 + minutes; }
-    
-    bool operator<(const Time& other) const {
-        return toMinutes() < other.toMinutes();
+    bool operator<(const Pair& other) const {
+        if (first != other.first) return first < other.first;
+        return second < other.second;
     }
     
-    bool operator>(const Time& other) const {
-        return toMinutes() > other.toMinutes();
-    }
-    
-    bool operator==(const Time& other) const {
-        return hours == other.hours && minutes == other.minutes;
-    }
-    
-    int differenceInMinutes(const Time& other) const {
-        return abs(toMinutes() - other.toMinutes());
-    }
-    
-    Time addMinutes(int mins) const {
-        int totalMins = toMinutes() + mins;
-        return Time(totalMins / 60, totalMins % 60);
+    bool operator>(const Pair& other) const {
+        return other < *this;
     }
 };
 
-class Date {
-private:
-    int day, month, year;
-    
-public:
-    Date(int d = 1, int m = 1, int y = 2024) : day(d), month(m), year(y) {}
-    
-    string toString() const {
-        stringstream ss;
-        ss << setfill('0') << setw(2) << day << "/" 
-           << setw(2) << month << "/" << year;
-        return ss.str();
-    }
-    
-    bool operator<(const Date& other) const {
-        if (year != other.year) return year < other.year;
-        if (month != other.month) return month < other.month;
-        return day < other.day;
-    }
-};
+template<typename T1, typename T2>
+Pair<T1, T2> makePair(T1 f, T2 s) {
+    return Pair<T1, T2>(f, s);
+}
 
-// ==================== CORE ENTITIES ====================
+// ==================== MANUAL VECTOR IMPLEMENTATION ====================
 
-class Station {
+template<typename T>
+class Vector {
 private:
-    string stationId;
-    string name;
-    string city;
-    int platformCount;
-    pair<double, double> coordinates; // latitude, longitude
+    T* data;
+    int capacity;
+    int size;
     
-public:
-    Station() : platformCount(0), coordinates({0.0, 0.0}) {}
-    
-    Station(string id, string n, string c, int platforms, 
-            double lat, double lon)
-        : stationId(id), name(n), city(c), platformCount(platforms),
-          coordinates({lat, lon}) {}
-    
-    string getId() const { return stationId; }
-    string getName() const { return name; }
-    string getCity() const { return city; }
-    int getPlatforms() const { return platformCount; }
-    pair<double, double> getCoordinates() const { return coordinates; }
-    
-    void display() const {
-        cout << "\n┌─────────────────────────────────────────┐\n";
-        cout << "│ Station ID    : " << left << setw(22) << stationId << "│\n";
-        cout << "│ Name          : " << setw(22) << name << "│\n";
-        cout << "│ City          : " << setw(22) << city << "│\n";
-        cout << "│ Platforms     : " << setw(22) << platformCount << "│\n";
-        cout << "│ Coordinates   : " << setw(22) 
-             << ("(" + to_string(coordinates.first) + ", " + 
-                 to_string(coordinates.second) + ")") << "│\n";
-        cout << "└─────────────────────────────────────────┘\n";
-    }
-};
-
-class Passenger {
-private:
-    string passengerId;
-    string name;
-    string cnic;
-    string phone;
-    int age;
-    
-public:
-    Passenger() : age(0) {}
-    
-    Passenger(string id, string n, string c, string p, int a)
-        : passengerId(id), name(n), cnic(c), phone(p), age(a) {}
-    
-    string getId() const { return passengerId; }
-    string getName() const { return name; }
-    string getCnic() const { return cnic; }
-    string getPhone() const { return phone; }
-    int getAge() const { return age; }
-    
-    void display() const {
-        cout << "┌─────────────────────────────────────────┐\n";
-        cout << "│ Passenger ID  : " << left << setw(22) << passengerId << "│\n";
-        cout << "│ Name          : " << setw(22) << name << "│\n";
-        cout << "│ CNIC          : " << setw(22) << cnic << "│\n";
-        cout << "│ Phone         : " << setw(22) << phone << "│\n";
-        cout << "│ Age           : " << setw(22) << age << "│\n";
-        cout << "└─────────────────────────────────────────┘\n";
-    }
-};
-
-class Ticket {
-private:
-    string ticketId;
-    string passengerId;
-    string trainId;
-    string fromStation;
-    string toStation;
-    Date journeyDate;
-    Time departureTime;
-    double fare;
-    string seatNumber;
-    bool isBooked;
-    
-public:
-    Ticket() : fare(0.0), isBooked(false) {}
-    
-    Ticket(string tId, string pId, string trId, string from, string to,
-           Date date, Time time, double f, string seat)
-        : ticketId(tId), passengerId(pId), trainId(trId), 
-          fromStation(from), toStation(to), journeyDate(date),
-          departureTime(time), fare(f), seatNumber(seat), isBooked(true) {}
-    
-    string getId() const { return ticketId; }
-    string getPassengerId() const { return passengerId; }
-    string getTrainId() const { return trainId; }
-    string getFrom() const { return fromStation; }
-    string getTo() const { return toStation; }
-    double getFare() const { return fare; }
-    bool getBookingStatus() const { return isBooked; }
-    
-    void cancelTicket() { isBooked = false; }
-    
-    void display() const {
-        cout << "\n╔═══════════════════════════════════════════╗\n";
-        cout << "║           RAILWAY TICKET                  ║\n";
-        cout << "╠═══════════════════════════════════════════╣\n";
-        cout << "║ Ticket ID     : " << left << setw(24) << ticketId << "║\n";
-        cout << "║ Passenger ID  : " << setw(24) << passengerId << "║\n";
-        cout << "║ Train ID      : " << setw(24) << trainId << "║\n";
-        cout << "║ From          : " << setw(24) << fromStation << "║\n";
-        cout << "║ To            : " << setw(24) << toStation << "║\n";
-        cout << "║ Date          : " << setw(24) << journeyDate.toString() << "║\n";
-        cout << "║ Departure     : " << setw(24) << departureTime.toString() << "║\n";
-        cout << "║ Seat          : " << setw(24) << seatNumber << "║\n";
-        cout << "║ Fare          : PKR " << setw(20) << fixed << setprecision(2) << fare << "║\n";
-        cout << "║ Status        : " << setw(24) << (isBooked ? "CONFIRMED" : "CANCELLED") << "║\n";
-        cout << "╚═══════════════════════════════════════════╝\n";
-    }
-};
-
-class Train {
-private:
-    string trainId;
-    string trainName;
-    string trainType; // Express, Passenger, Freight
-    int totalSeats;
-    int availableSeats;
-    vector<string> route; // List of station IDs
-    map<string, Time> schedule; // Station ID -> Arrival Time
-    int priority; // Higher priority = more important
-    int delayMinutes;
-    
-public:
-    Train() : totalSeats(0), availableSeats(0), priority(0), delayMinutes(0) {}
-    
-    Train(string id, string name, string type, int seats, int prio)
-        : trainId(id), trainName(name), trainType(type), 
-          totalSeats(seats), availableSeats(seats), priority(prio), delayMinutes(0) {}
-    
-    string getId() const { return trainId; }
-    string getName() const { return trainName; }
-    string getType() const { return trainType; }
-    int getPriority() const { return priority; }
-    int getDelay() const { return delayMinutes; }
-    int getAvailableSeats() const { return availableSeats; }
-    vector<string> getRoute() const { return route; }
-    map<string, Time> getSchedule() const { return schedule; }
-    
-    void addToRoute(string stationId, Time arrivalTime) {
-        route.push_back(stationId);
-        schedule[stationId] = arrivalTime;
-    }
-    
-    void setDelay(int mins) { delayMinutes = mins; }
-    
-    bool bookSeat() {
-        if (availableSeats > 0) {
-            availableSeats--;
-            return true;
+    void resize() {
+        capacity = (capacity == 0) ? 2 : capacity * 2;
+        T* newData = new T[capacity];
+        for (int i = 0; i < size; i++) {
+            newData[i] = data[i];
         }
-        return false;
+        delete[] data;
+        data = newData;
     }
     
-    void releaseSeat() {
-        if (availableSeats < totalSeats) {
-            availableSeats++;
+public:
+    Vector() : data(nullptr), capacity(0), size(0) {}
+    
+    Vector(int initialCapacity) : capacity(initialCapacity), size(0) {
+        data = new T[capacity];
+    }
+    
+    Vector(const Vector& other) : capacity(other.capacity), size(other.size) {
+        data = new T[capacity];
+        for (int i = 0; i < size; i++) {
+            data[i] = other.data[i];
         }
     }
     
-    Time getArrivalTime(string stationId) const {
-        if (schedule.find(stationId) != schedule.end()) {
-            return schedule.at(stationId).addMinutes(delayMinutes);
-        }
-        return Time(0, 0);
+    ~Vector() {
+        delete[] data;
     }
     
-    void display() const {
-        cout << "\n╔════════════════════════════════════════════╗\n";
-        cout << "║            TRAIN INFORMATION               ║\n";
-        cout << "╠════════════════════════════════════════════╣\n";
-        cout << "║ Train ID      : " << left << setw(25) << trainId << "║\n";
-        cout << "║ Name          : " << setw(25) << trainName << "║\n";
-        cout << "║ Type          : " << setw(25) << trainType << "║\n";
-        cout << "║ Total Seats   : " << setw(25) << totalSeats << "║\n";
-        cout << "║ Available     : " << setw(25) << availableSeats << "║\n";
-        cout << "║ Priority      : " << setw(25) << priority << "║\n";
-        cout << "║ Delay         : " << setw(22) << delayMinutes << " min║\n";
-        cout << "╠════════════════════════════════════════════╣\n";
-        cout << "║ Route & Schedule:                          ║\n";
-        for (const auto& station : route) {
-            Time actualTime = schedule.at(station).addMinutes(delayMinutes);
-            cout << "║  → " << left << setw(25) << station 
-                 << setw(10) << actualTime.toString() << "   ║\n";
+    Vector& operator=(const Vector& other) {
+        if (this != &other) {
+            delete[] data;
+            capacity = other.capacity;
+            size = other.size;
+            data = new T[capacity];
+            for (int i = 0; i < size; i++) {
+                data[i] = other.data[i];
+            }
         }
-        cout << "╚════════════════════════════════════════════╝\n";
+        return *this;
+    }
+    
+    void push_back(const T& value) {
+        if (size >= capacity) {
+            resize();
+        }
+        data[size++] = value;
+    }
+    
+    void pop_back() {
+        if (size > 0) size--;
+    }
+    
+    T& operator[](int index) { return data[index]; }
+    const T& operator[](int index) const { return data[index]; }
+    
+    T& at(int index) {
+        if (index < 0 || index >= size) {
+            throw runtime_error("Index out of bounds");
+        }
+        return data[index];
+    }
+    
+    int getSize() const { return size; }
+    bool empty() const { return size == 0; }
+    void clear() { size = 0; }
+    
+    T* begin() { return data; }
+    T* end() { return data + size; }
+    const T* begin() const { return data; }
+    const T* end() const { return data + size; }
+    
+    void erase(T* pos) {
+        int index = pos - data;
+        for (int i = index; i < size - 1; i++) {
+            data[i] = data[i + 1];
+        }
+        size--;
+    }
+    
+    T& back() { return data[size - 1]; }
+    void reserve(int newCapacity) {
+        if (newCapacity > capacity) {
+            T* newData = new T[newCapacity];
+            for (int i = 0; i < size; i++) {
+                newData[i] = data[i];
+            }
+            delete[] data;
+            data = newData;
+            capacity = newCapacity;
+        }
     }
 };
 
-// ==================== GRAPH EDGE ====================
+// ==================== MANUAL MAP IMPLEMENTATION (AVL TREE) ====================
 
-struct Edge {
-    string destination;
-    double distance; // in kilometers
-    int travelTime; // in minutes
-    double fare;
+template<typename K, typename V>
+class Map {
+private:
+    struct Node {
+        Pair<K, V> data;
+        Node* left;
+        Node* right;
+        int height;
+        
+        Node(K key, V value) : data(key, value), left(nullptr), right(nullptr), height(1) {}
+    };
     
-    Edge(string dest, double dist, int time, double f)
-        : destination(dest), distance(dist), travelTime(time), fare(f) {}
-};
-
-// ==================== PRIORITY QUEUE NODE ====================
-
-struct TrainPriority {
-    shared_ptr<Train> train;
-    Time scheduledTime;
+    Node* root;
+    int count;
     
-    TrainPriority(shared_ptr<Train> t, Time time)
-        : train(t), scheduledTime(time) {}
+    int height(Node* node) {
+        return node ? node->height : 0;
+    }
     
-    bool operator<(const TrainPriority& other) const {
-        // Higher priority trains come first
-        // If same priority, earlier time comes first
-        if (train->getPriority() != other.train->getPriority()) {
-            return train->getPriority() < other.train->getPriority();
+    int getBalance(Node* node) {
+        return node ? height(node->left) - height(node->right) : 0;
+    }
+    
+    int max(int a, int b) {
+        return (a > b) ? a : b;
+    }
+    
+    Node* rightRotate(Node* y) {
+        Node* x = y->left;
+        Node* T2 = x->right;
+        x->right = y;
+        y->left = T2;
+        y->height = max(height(y->left), height(y->right)) + 1;
+        x->height = max(height(x->left), height(x->right)) + 1;
+        return x;
+    }
+    
+    Node* leftRotate(Node* x) {
+        Node* y = x->right;
+        Node* T2 = y->left;
+        y->left = x;
+        x->right = T2;
+        x->height = max(height(x->left), height(x->right)) + 1;
+        y->height = max(height(y->left), height(y->right)) + 1;
+        return y;
+    }
+    
+    Node* insert(Node* node, K key, V value, bool& updated) {
+        if (!node) {
+            if (!updated) count++;
+            return new Node(key, value);
         }
-        return scheduledTime > other.scheduledTime;
+        
+        if (key < node->data.first) {
+            node->left = insert(node->left, key, value, updated);
+        } else if (key > node->data.first) {
+            node->right = insert(node->right, key, value, updated);
+        } else {
+            node->data.second = value;
+            updated = true;
+            return node;
+        }
+        
+        node->height = 1 + max(height(node->left), height(node->right));
+        int balance = getBalance(node);
+        
+        if (balance > 1 && key < node->left->data.first) {
+            return rightRotate(node);
+        }
+        if (balance < -1 && key > node->right->data.first) {
+            return leftRotate(node);
+        }
+        if (balance > 1 && key > node->left->data.first) {
+            node->left = leftRotate(node->left);
+            return rightRotate(node);
+        }
+        if (balance < -1 && key < node->right->data.first) {
+            node->right = rightRotate(node->right);
+            return leftRotate(node);
+        }
+        
+        return node;
+    }
+    
+    Node* find(Node* node, const K& key) const {
+        if (!node) return nullptr;
+        if (key == node->data.first) return node;
+        if (key < node->data.first) return find(node->left, key);
+        return find(node->right, key);
+    }
+    
+    void inorder(Node* node, Vector<Pair<K, V>>& result) const {
+        if (!node) return;
+        inorder(node->left, result);
+        result.push_back(node->data);
+        inorder(node->right, result);
+    }
+    
+    void deleteTree(Node* node) {
+        if (!node) return;
+        deleteTree(node->left);
+        deleteTree(node->right);
+        delete node;
+    }
+    
+public:
+    Map() : root(nullptr), count(0) {}
+    
+    ~Map() {
+        deleteTree(root);
+    }
+    
+    void insert(const K& key, const V& value) {
+        bool updated = false;
+        root = insert(root, key, value, updated);
+    }
+    
+    V& operator[](const K& key) {
+        Node* node = find(root, key);
+        if (!node) {
+            bool updated = false;
+            root = insert(root, key, V(), updated);
+            node = find(root, key);
+        }
+        return node->data.second;
+    }
+    
+    bool contains(const K& key) const {
+        return find(root, key) != nullptr;
+    }
+    
+    const V* get(const K& key) const {
+        Node* node = find(root, key);
+        return node ? &node->data.second : nullptr;
+    }
+    
+    V* get(const K& key) {
+        Node* node = find(root, key);
+        return node ? &node->data.second : nullptr;
+    }
+    
+    int size() const { return count; }
+    bool empty() const { return count == 0; }
+    
+    Vector<Pair<K, V>> toVector() const {
+        Vector<Pair<K, V>> result;
+        inorder(root, result);
+        return result;
     }
 };
 
-// ==================== DIJKSTRA RESULT ====================
+// ==================== MANUAL SET IMPLEMENTATION ====================
 
-struct PathInfo {
-    vector<string> path;
-    double totalDistance;
-    int totalTime;
-    double totalFare;
+template<typename T>
+class Set {
+private:
+    struct Node {
+        T data;
+        Node* left;
+        Node* right;
+        int height;
+        
+        Node(T value) : data(value), left(nullptr), right(nullptr), height(1) {}
+    };
     
-    PathInfo() : totalDistance(0), totalTime(0), totalFare(0) {}
+    Node* root;
+    int count;
+    
+    int height(Node* node) {
+        return node ? node->height : 0;
+    }
+    
+    int max(int a, int b) {
+        return (a > b) ? a : b;
+    }
+    
+    int getBalance(Node* node) {
+        return node ? height(node->left) - height(node->right) : 0;
+    }
+    
+    Node* rightRotate(Node* y) {
+        Node* x = y->left;
+        Node* T2 = x->right;
+        x->right = y;
+        y->left = T2;
+        y->height = max(height(y->left), height(y->right)) + 1;
+        x->height = max(height(x->left), height(x->right)) + 1;
+        return x;
+    }
+    
+    Node* leftRotate(Node* x) {
+        Node* y = x->right;
+        Node* T2 = y->left;
+        y->left = x;
+        x->right = T2;
+        x->height = max(height(x->left), height(x->right)) + 1;
+        y->height = max(height(y->left), height(y->right)) + 1;
+        return y;
+    }
+    
+    Node* insert(Node* node, T value, bool& inserted) {
+        if (!node) {
+            inserted = true;
+            count++;
+            return new Node(value);
+        }
+        
+        if (value < node->data) {
+            node->left = insert(node->left, value, inserted);
+        } else if (value > node->data) {
+            node->right = insert(node->right, value, inserted);
+        } else {
+            return node;
+        }
+        
+        node->height = 1 + max(height(node->left), height(node->right));
+        int balance = getBalance(node);
+        
+        if (balance > 1 && value < node->left->data) {
+            return rightRotate(node);
+        }
+        if (balance < -1 && value > node->right->data) {
+            return leftRotate(node);
+        }
+        if (balance > 1 && value > node->left->data) {
+            node->left = leftRotate(node->left);
+            return rightRotate(node);
+        }
+        if (balance < -1 && value < node->right->data) {
+            node->right = rightRotate(node->right);
+            return leftRotate(node);
+        }
+        
+        return node;
+    }
+    
+    bool find(Node* node, T value) const {
+        if (!node) return false;
+        if (value == node->data) return true;
+        if (value < node->data) return find(node->left, value);
+        return find(node->right, value);
+    }
+    
+    Node* minValueNode(Node* node) {
+        Node* current = node;
+        while (current->left) {
+            current = current->left;
+        }
+        return current;
+    }
+    
+    Node* erase(Node* node, T value) {
+        if (!node) return node;
+        
+        if (value < node->data) {
+            node->left = erase(node->left, value);
+        } else if (value > node->data) {
+            node->right = erase(node->right, value);
+        } else {
+            if (!node->left || !node->right) {
+                Node* temp = node->left ? node->left : node->right;
+                if (!temp) {
+                    temp = node;
+                    node = nullptr;
+                } else {
+                    *node = *temp;
+                }
+                delete temp;
+                count--;
+            } else {
+                Node* temp = minValueNode(node->right);
+                node->data = temp->data;
+                node->right = erase(node->right, temp->data);
+            }
+        }
+        
+        if (!node) return node;
+        
+        node->height = 1 + max(height(node->left), height(node->right));
+        int balance = getBalance(node);
+        
+        if (balance > 1 && getBalance(node->left) >= 0) {
+            return rightRotate(node);
+        }
+        if (balance > 1 && getBalance(node->left) < 0) {
+            node->left = leftRotate(node->left);
+            return rightRotate(node);
+        }
+        if (balance < -1 && getBalance(node->right) <= 0) {
+            return leftRotate(node);
+        }
+        if (balance < -1 && getBalance(node->right) > 0) {
+            node->right = rightRotate(node->right);
+            return leftRotate(node);
+        }
+        
+        return node;
+    }
+    
+    void deleteTree(Node* node) {
+        if (!node) return;
+        deleteTree(node->left);
+        deleteTree(node->right);
+        delete node;
+    }
+    
+public:
+    Set() : root(nullptr), count(0) {}
+    
+    ~Set() {
+        deleteTree(root);
+    }
+    
+    void insert(T value) {
+        bool inserted = false;
+        root = insert(root, value, inserted);
+    }
+    
+    void erase(T value) {
+        root = erase(root, value);
+    }
+    
+    bool contains(T value) const {
+        return find(root, value);
+    }
+    
+    int size() const { return count; }
+    bool empty() const { return count == 0; }
 };
 
-// ==================== HASH TABLE IMPLEMENTATION ====================
+// ==================== MANUAL PRIORITY QUEUE (MAX HEAP) ====================
+
+template<typename T>
+class PriorityQueue {
+private:
+    Vector<T> heap;
+    
+    int parent(int i) { return (i - 1) / 2; }
+    int leftChild(int i) { return 2 * i + 1; }
+    int rightChild(int i) { return 2 * i + 2; }
+    
+    void heapifyUp(int index) {
+        while (index > 0 && heap[parent(index)] < heap[index]) {
+            T temp = heap[index];
+            heap[index] = heap[parent(index)];
+            heap[parent(index)] = temp;
+            index = parent(index);
+        }
+    }
+    
+    void heapifyDown(int index) {
+        int size = heap.getSize();
+        while (leftChild(index) < size) {
+            int largest = index;
+            int left = leftChild(index);
+            int right = rightChild(index);
+            
+            if (left < size && heap[largest] < heap[left]) {
+                largest = left;
+            }
+            if (right < size && heap[largest] < heap[right]) {
+                largest = right;
+            }
+            
+            if (largest == index) break;
+            
+            T temp = heap[index];
+            heap[index] = heap[largest];
+            heap[largest] = temp;
+            index = largest;
+        }
+    }
+    
+public:
+    PriorityQueue() {}
+    
+    void push(const T& value) {
+        heap.push_back(value);
+        heapifyUp(heap.getSize() - 1);
+    }
+    
+    void pop() {
+        if (heap.empty()) return;
+        heap[0] = heap[heap.getSize() - 1];
+        heap.pop_back();
+        if (!heap.empty()) {
+            heapifyDown(0);
+        }
+    }
+    
+    const T& top() const {
+        return heap[0];
+    }
+    
+    bool empty() const {
+        return heap.empty();
+    }
+    
+    int size() const {
+        return heap.getSize();
+    }
+};
+
+// ==================== MIN PRIORITY QUEUE ====================
+
+template<typename T>
+struct Greater {
+    bool operator()(const T& a, const T& b) const {
+        return a > b;
+    }
+};
+
+template<typename T>
+class MinPriorityQueue {
+private:
+    Vector<T> heap;
+    
+    int parent(int i) { return (i - 1) / 2; }
+    int leftChild(int i) { return 2 * i + 1; }
+    int rightChild(int i) { return 2 * i + 2; }
+    
+    void heapifyUp(int index) {
+        while (index > 0 && heap[index] < heap[parent(index)]) {
+            T temp = heap[index];
+            heap[index] = heap[parent(index)];
+            heap[parent(index)] = temp;
+            index = parent(index);
+        }
+    }
+    
+    void heapifyDown(int index) {
+        int size = heap.getSize();
+        while (leftChild(index) < size) {
+            int smallest = index;
+            int left = leftChild(index);
+            int right = rightChild(index);
+            
+            if (left < size && heap[left] < heap[smallest]) {
+                smallest = left;
+            }
+            if (right < size && heap[right] < heap[smallest]) {
+                smallest = right;
+            }
+            
+            if (smallest == index) break;
+            
+            T temp = heap[index];
+            heap[index] = heap[smallest];
+            heap[smallest] = temp;
+            index = smallest;
+        }
+    }
+    
+public:
+    MinPriorityQueue() {}
+    
+    void push(const T& value) {
+        heap.push_back(value);
+        heapifyUp(heap.getSize() - 1);
+    }
+    
+    void pop() {
+        if (heap.empty()) return;
+        heap[0] = heap[heap.getSize() - 1];
+        heap.pop_back();
+        if (!heap.empty()) {
+            heapifyDown(0);
+        }
+    }
+    
+    const T& top() const {
+        return heap[0];
+    }
+    
+    bool empty() const {
+        return heap.empty();
+    }
+    
+    int size() const {
+        return heap.getSize();
+    }
+};
+
+// ==================== MANUAL HASH TABLE ====================
 
 template<typename K, typename V>
 class HashTable {
@@ -351,26 +666,31 @@ private:
         HashNode() : isOccupied(false), isDeleted(false) {}
     };
     
-    vector<HashNode> table;
+    Vector<HashNode> table;
     int count;
     
     int hashFunction(const string& key) const {
         int hash = 0;
-        for (char c : key) {
-            hash = (hash * 31 + c) % TABLE_SIZE;
+        for (int i = 0; i < key.length(); i++) {
+            hash = (hash * 31 + key[i]) % TABLE_SIZE;
         }
-        return hash;
+        return hash >= 0 ? hash : hash + TABLE_SIZE;
     }
     
     int probe(int index, int i) const {
-        return (index + i * i) % TABLE_SIZE; // Quadratic probing
+        return (index + i * i) % TABLE_SIZE;
     }
     
 public:
-    HashTable() : table(TABLE_SIZE), count(0) {}
+    HashTable() : count(0) {
+        table.reserve(TABLE_SIZE);
+        for (int i = 0; i < TABLE_SIZE; i++) {
+            table.push_back(HashNode());
+        }
+    }
     
     bool insert(const K& key, const V& value) {
-        if (count >= TABLE_SIZE * 0.7) { // Load factor check
+        if (count >= TABLE_SIZE * 0.7) {
             return false;
         }
         
@@ -422,34 +742,11 @@ public:
         return false;
     }
     
-    bool remove(const K& key) {
-        int index = hashFunction(key);
-        int i = 0;
-        
-        while (i < TABLE_SIZE) {
-            int probedIndex = probe(index, i);
-            
-            if (!table[probedIndex].isOccupied) {
-                return false;
-            }
-            
-            if (table[probedIndex].key == key && !table[probedIndex].isDeleted) {
-                table[probedIndex].isDeleted = true;
-                count--;
-                return true;
-            }
-            
-            i++;
-        }
-        
-        return false;
-    }
-    
-    vector<pair<K, V>> getAllEntries() const {
-        vector<pair<K, V>> entries;
-        for (const auto& node : table) {
-            if (node.isOccupied && !node.isDeleted) {
-                entries.push_back({node.key, node.value});
+    Vector<Pair<K, V>> getAllEntries() const {
+        Vector<Pair<K, V>> entries;
+        for (int i = 0; i < table.getSize(); i++) {
+            if (table[i].isOccupied && !table[i].isDeleted) {
+                entries.push_back(makePair(table[i].key, table[i].value));
             }
         }
         return entries;
@@ -457,6 +754,322 @@ public:
     
     int size() const { return count; }
     bool isEmpty() const { return count == 0; }
+};
+
+// ==================== SIMPLE SMART POINTER ====================
+
+template<typename T>
+class SharedPtr {
+private:
+    T* ptr;
+    int* refCount;
+    
+public:
+    SharedPtr() : ptr(nullptr), refCount(nullptr) {}
+    
+    SharedPtr(T* p) : ptr(p), refCount(new int(1)) {}
+    
+    SharedPtr(const SharedPtr& other) : ptr(other.ptr), refCount(other.refCount) {
+        if (refCount) (*refCount)++;
+    }
+    
+    ~SharedPtr() {
+        if (refCount) {
+            (*refCount)--;
+            if (*refCount == 0) {
+                delete ptr;
+                delete refCount;
+            }
+        }
+    }
+    
+    SharedPtr& operator=(const SharedPtr& other) {
+        if (this != &other) {
+            if (refCount) {
+                (*refCount)--;
+                if (*refCount == 0) {
+                    delete ptr;
+                    delete refCount;
+                }
+            }
+            ptr = other.ptr;
+            refCount = other.refCount;
+            if (refCount) (*refCount)++;
+        }
+        return *this;
+    }
+    
+    T& operator*() { return *ptr; }
+    T* operator->() { return ptr; }
+    const T* operator->() const { return ptr; }
+    T* get() { return ptr; }
+    const T* get() const { return ptr; }
+    bool isNull() const { return ptr == nullptr; }
+};
+
+template<typename T, typename... Args>
+SharedPtr<T> makeShared(Args&&... args) {
+    return SharedPtr<T>(new T(args...));
+}
+
+// ==================== UTILITY CLASSES ====================
+
+class Time {
+private:
+    int hours, minutes;
+    
+public:
+    Time(int h = 0, int m = 0) : hours(h % 24), minutes(m % 60) {}
+    
+    string toString() const {
+        stringstream ss;
+        ss << setfill('0') << setw(2) << hours << ":" 
+           << setw(2) << minutes;
+        return ss.str();
+    }
+    
+    int toMinutes() const { return hours * 60 + minutes; }
+    
+    bool operator<(const Time& other) const {
+        return toMinutes() < other.toMinutes();
+    }
+    
+    bool operator>(const Time& other) const {
+        return toMinutes() > other.toMinutes();
+    }
+    
+    bool operator==(const Time& other) const {
+        return hours == other.hours && minutes == other.minutes;
+    }
+    
+    Time addMinutes(int mins) const {
+        int totalMins = toMinutes() + mins;
+        return Time(totalMins / 60, totalMins % 60);
+    }
+};
+
+class Date {
+private:
+    int day, month, year;
+    
+public:
+    Date(int d = 1, int m = 1, int y = 2024) : day(d), month(m), year(y) {}
+    
+    string toString() const {
+        stringstream ss;
+        ss << setfill('0') << setw(2) << day << "/" 
+           << setw(2) << month << "/" << year;
+        return ss.str();
+    }
+};
+
+// ==================== CORE ENTITIES ====================
+
+class Station {
+private:
+    string stationId;
+    string name;
+    string city;
+    int platformCount;
+    Pair<double, double> coordinates;
+    
+public:
+    Station() : platformCount(0), coordinates(makePair(0.0, 0.0)) {}
+    
+    Station(string id, string n, string c, int platforms, double lat, double lon)
+        : stationId(id), name(n), city(c), platformCount(platforms),
+          coordinates(makePair(lat, lon)) {}
+    
+    string getId() const { return stationId; }
+    string getName() const { return name; }
+    string getCity() const { return city; }
+    int getPlatforms() const { return platformCount; }
+    
+    void display() const {
+        cout << "\n+=========================================+\n";
+        cout << "| Station ID    : " << left << setw(20) << stationId << "|\n";
+        cout << "| Name          : " << setw(20) << name << "|\n";
+        cout << "| City          : " << setw(20) << city << "|\n";
+        cout << "| Platforms     : " << setw(20) << platformCount << "|\n";
+        cout << "+=========================================+\n";
+    }
+};
+
+class Passenger {
+private:
+    string passengerId;
+    string name;
+    string cnic;
+    string phone;
+    int age;
+    
+public:
+    Passenger() : age(0) {}
+    
+    Passenger(string id, string n, string c, string p, int a)
+        : passengerId(id), name(n), cnic(c), phone(p), age(a) {}
+    
+    string getId() const { return passengerId; }
+    string getName() const { return name; }
+    
+    void display() const {
+        cout << "+=========================================+\n";
+        cout << "| Passenger ID  : " << left << setw(20) << passengerId << "|\n";
+        cout << "| Name          : " << setw(20) << name << "|\n";
+        cout << "| CNIC          : " << setw(20) << cnic << "|\n";
+        cout << "| Phone         : " << setw(20) << phone << "|\n";
+        cout << "| Age           : " << setw(20) << age << "|\n";
+        cout << "+=========================================+\n";
+    }
+};
+
+class Ticket {
+private:
+    string ticketId;
+    string passengerId;
+    string trainId;
+    string fromStation;
+    string toStation;
+    Date journeyDate;
+    Time departureTime;
+    double fare;
+    string seatNumber;
+    bool isBooked;
+    
+public:
+    Ticket() : fare(0.0), isBooked(false) {}
+    
+    Ticket(string tId, string pId, string trId, string from, string to,
+           Date date, Time time, double f, string seat)
+        : ticketId(tId), passengerId(pId), trainId(trId), 
+          fromStation(from), toStation(to), journeyDate(date),
+          departureTime(time), fare(f), seatNumber(seat), isBooked(true) {}
+    
+    string getId() const { return ticketId; }
+    string getTrainId() const { return trainId; }
+    double getFare() const { return fare; }
+    bool getBookingStatus() const { return isBooked; }
+    
+    void cancelTicket() { isBooked = false; }
+    
+    void display() const {
+        cout << "\n+===========================================+\n";
+        cout << "|           RAILWAY TICKET                  |\n";
+        cout << "+===========================================+\n";
+        cout << "| Ticket ID     : " << left << setw(22) << ticketId << "|\n";
+        cout << "| Passenger ID  : " << setw(22) << passengerId << "|\n";
+        cout << "| Train ID      : " << setw(22) << trainId << "|\n";
+        cout << "| From          : " << setw(22) << fromStation << "|\n";
+        cout << "| To            : " << setw(22) << toStation << "|\n";
+        cout << "| Date          : " << setw(22) << journeyDate.toString() << "|\n";
+        cout << "| Departure     : " << setw(22) << departureTime.toString() << "|\n";
+        cout << "| Seat          : " << setw(22) << seatNumber << "|\n";
+        cout << "| Fare          : PKR " << setw(18) << fixed << setprecision(2) << fare << "|\n";
+        cout << "| Status        : " << setw(22) << (isBooked ? "CONFIRMED" : "CANCELLED") << "|\n";
+        cout << "+===========================================+\n";
+    }
+};
+
+class Train {
+private:
+    string trainId;
+    string trainName;
+    string trainType;
+    int totalSeats;
+    int availableSeats;
+    Vector<string> route;
+    Map<string, Time> schedule;
+    int priority;
+    int delayMinutes;
+    
+public:
+    Train() : totalSeats(0), availableSeats(0), priority(0), delayMinutes(0) {}
+    
+    Train(string id, string name, string type, int seats, int prio)
+        : trainId(id), trainName(name), trainType(type), 
+          totalSeats(seats), availableSeats(seats), priority(prio), delayMinutes(0) {}
+    
+    string getId() const { return trainId; }
+    string getName() const { return trainName; }
+    int getPriority() const { return priority; }
+    int getDelay() const { return delayMinutes; }
+    int getAvailableSeats() const { return availableSeats; }
+    Vector<string> getRoute() const { return route; }
+    
+    void addToRoute(string stationId, Time arrivalTime) {
+        route.push_back(stationId);
+        schedule.insert(stationId, arrivalTime);
+    }
+    
+    void setDelay(int mins) { delayMinutes = mins; }
+    
+    bool bookSeat() {
+        if (availableSeats > 0) {
+            availableSeats--;
+            return true;
+        }
+        return false;
+    }
+    
+    void releaseSeat() {
+        if (availableSeats < totalSeats) {
+            availableSeats++;
+        }
+    }
+    
+    Time getArrivalTime(string stationId) const {
+        const Time* timePtr = schedule.get(stationId);
+        if (timePtr) {
+            return timePtr->addMinutes(delayMinutes);
+        }
+        return Time(0, 0);
+    }
+    
+    void display() const {
+        cout << "\n+============================================+\n";
+        cout << "| Train ID      : " << left << setw(23) << trainId << "|\n";
+        cout << "| Name          : " << setw(23) << trainName << "|\n";
+        cout << "| Type          : " << setw(23) << trainType << "|\n";
+        cout << "| Total Seats   : " << setw(23) << totalSeats << "|\n";
+        cout << "| Available     : " << setw(23) << availableSeats << "|\n";
+        cout << "| Priority      : " << setw(23) << priority << "|\n";
+        cout << "| Delay         : " << setw(20) << delayMinutes << " min|\n";
+        cout << "+============================================+\n";
+        cout << "| Route & Schedule:                          |\n";
+        
+        Vector<Pair<string, Time>> scheduleVec = schedule.toVector();
+        for (int i = 0; i < scheduleVec.getSize(); i++) {
+            Time actualTime = scheduleVec[i].second.addMinutes(delayMinutes);
+            cout << "|  -> " << left << setw(23) << scheduleVec[i].first 
+                 << setw(10) << actualTime.toString() << "   |\n";
+        }
+        cout << "+============================================+\n";
+    }
+};
+
+// ==================== GRAPH EDGE ====================
+
+struct Edge {
+    string destination;
+    double distance;
+    int travelTime;
+    double fare;
+    
+    Edge() : distance(0), travelTime(0), fare(0) {}
+    
+    Edge(string dest, double dist, int time, double f)
+        : destination(dest), distance(dist), travelTime(time), fare(f) {}
+};
+
+// ==================== PATH INFO ====================
+
+struct PathInfo {
+    Vector<string> path;
+    double totalDistance;
+    int totalTime;
+    double totalFare;
+    
+    PathInfo() : totalDistance(0), totalTime(0), totalFare(0) {}
 };
 
 // ==================== PASSENGER QUEUE ====================
@@ -468,19 +1081,20 @@ private:
         int priority;
         Time arrivalTime;
         
+        QueueNode() : priority(0) {}
+        
         QueueNode(Passenger p, int pr, Time t)
             : passenger(p), priority(pr), arrivalTime(t) {}
         
         bool operator<(const QueueNode& other) const {
-            // Higher priority (elderly, disabled) comes first
             if (priority != other.priority) {
-                return priority < other.priority;
+                return priority > other.priority;
             }
-            return arrivalTime > other.arrivalTime;
+            return arrivalTime < other.arrivalTime;
         }
     };
     
-    priority_queue<QueueNode> pq;
+    PriorityQueue<QueueNode> pq;
     
 public:
     void enqueue(const Passenger& p, int priority, Time arrivalTime) {
@@ -503,42 +1117,18 @@ public:
     int size() const {
         return pq.size();
     }
-    
-    void display() const {
-        if (pq.empty()) {
-            cout << "Queue is empty.\n";
-            return;
-        }
-        
-        auto temp = pq;
-        cout << "\n╔════════════════════════════════════════════╗\n";
-        cout << "║         PASSENGER WAITING QUEUE            ║\n";
-        cout << "╠════════════════════════════════════════════╣\n";
-        
-        int position = 1;
-        while (!temp.empty()) {
-            auto node = temp.top();
-            temp.pop();
-            cout << "║ " << position++ << ". " << left << setw(35) 
-                 << node.passenger.getName() 
-                 << " P:" << node.priority << " ║\n";
-        }
-        
-        cout << "╚════════════════════════════════════════════╝\n";
-    }
 };
 
 // ==================== RAILWAY GRAPH SYSTEM ====================
 
 class RailwayGraph {
 private:
-    unordered_map<string, Station> stations;
-    unordered_map<string, vector<Edge>> adjacencyList;
-    HashTable<string, shared_ptr<Train>> trains;
+    Map<string, Station> stations;
+    Map<string, Vector<Edge>> adjacencyList;
+    HashTable<string, SharedPtr<Train>> trains;
     HashTable<string, Passenger> passengers;
     HashTable<string, Ticket> tickets;
-    map<string, PassengerQueue> stationQueues;
-    priority_queue<TrainPriority> trainSchedule;
+    Map<string, PassengerQueue> stationQueues;
     
     int ticketCounter;
     int passengerCounter;
@@ -548,10 +1138,7 @@ public:
         initializeKarachiNetwork();
     }
     
-    // ==================== INITIALIZATION ====================
-    
     void initializeKarachiNetwork() {
-        // Adding major railway stations in Karachi
         addStation(Station("KC", "Karachi Cantt", "Karachi", 6, 24.8607, 67.0011));
         addStation(Station("KCTY", "Karachi City", "Karachi", 8, 24.8614, 67.0099));
         addStation(Station("DRH", "Drigh Road", "Karachi", 4, 24.8967, 67.1354));
@@ -562,50 +1149,21 @@ public:
         addStation(Station("JCL", "Jama Cloth", "Karachi", 2, 24.8805, 67.0352));
         addStation(Station("ORG", "Orangi", "Karachi", 3, 24.9450, 66.9875));
         addStation(Station("SITE", "SITE", "Karachi", 2, 24.8850, 66.9900));
-        addStation(Station("GWDR", "Gawader", "Karachi", 2, 24.8200, 67.0600));
-        addStation(Station("SHAH", "Shahrah-e-Faisal", "Karachi", 3, 24.8850, 67.0800));
-        addStation(Station("KMR", "Korangi", "Karachi", 2, 24.8250, 67.1450));
-        addStation(Station("LYRI", "Lyari", "Karachi", 2, 24.8717, 66.9972));
-        addStation(Station("SDHR", "Saddar", "Karachi", 4, 24.8546, 67.0189));
         
-        // Adding edges (routes) with distance (km), time (min), and fare (PKR)
-        
-        // Main Line Route
         addEdge("KCTY", "KC", 1.2, 5, 20);
         addEdge("KC", "DRH", 8.5, 15, 50);
         addEdge("DRH", "MLR", 6.8, 12, 40);
         addEdge("MLR", "LNDI", 5.2, 10, 35);
         addEdge("LNDI", "BQS", 8.3, 18, 60);
-        
-        // Circular Railway Route
-        addEdge("KCTY", "SDHR", 2.5, 8, 25);
-        addEdge("SDHR", "LYRI", 3.1, 10, 30);
-        addEdge("LYRI", "SITE", 4.2, 12, 35);
-        addEdge("SITE", "ORG", 5.5, 15, 40);
-        addEdge("ORG", "SAL", 6.0, 18, 45);
-        addEdge("SAL", "JCL", 4.3, 10, 35);
-        addEdge("JCL", "KC", 3.8, 8, 30);
-        
-        // Cross connections
-        addEdge("KC", "SDHR", 2.0, 6, 25);
-        addEdge("DRH", "SHAH", 3.5, 8, 30);
-        addEdge("SHAH", "KMR", 5.0, 12, 40);
-        addEdge("KMR", "LNDI", 4.5, 10, 35);
-        addEdge("MLR", "KMR", 3.8, 8, 30);
-        addEdge("SITE", "GWDR", 2.5, 7, 25);
-        addEdge("GWDR", "LYRI", 3.0, 8, 25);
-        
-        // Additional connections
         addEdge("KCTY", "JCL", 2.8, 7, 25);
+        addEdge("JCL", "KC", 3.8, 8, 30);
         addEdge("SAL", "DRH", 7.5, 20, 55);
         
-        // Initialize some trains
         initializeTrains();
     }
     
     void initializeTrains() {
-        // Express Trains
-        auto train1 = make_shared<Train>("TN001", "Karachi Express", "Express", 500, 10);
+        SharedPtr<Train> train1 = makeShared<Train>("TN001", "Karachi Express", "Express", 500, 10);
         train1->addToRoute("KCTY", Time(6, 0));
         train1->addToRoute("KC", Time(6, 10));
         train1->addToRoute("DRH", Time(6, 30));
@@ -614,186 +1172,104 @@ public:
         train1->addToRoute("BQS", Time(7, 30));
         trains.insert("TN001", train1);
         
-        auto train2 = make_shared<Train>("TN002", "Circular Express", "Express", 450, 9);
-        train2->addToRoute("KCTY", Time(7, 0));
-        train2->addToRoute("SDHR", Time(7, 10));
-        train2->addToRoute("LYRI", Time(7, 25));
-        train2->addToRoute("SITE", Time(7, 40));
-        train2->addToRoute("ORG", Time(8, 0));
-        train2->addToRoute("SAL", Time(8, 20));
+        SharedPtr<Train> train2 = makeShared<Train>("TN002", "Local Passenger", "Passenger", 600, 5);
+        train2->addToRoute("KC", Time(8, 0));
+        train2->addToRoute("DRH", Time(8, 20));
+        train2->addToRoute("MLR", Time(8, 45));
         trains.insert("TN002", train2);
-        
-        // Passenger Trains
-        auto train3 = make_shared<Train>("TN003", "Local Passenger", "Passenger", 600, 5);
-        train3->addToRoute("KC", Time(8, 0));
-        train3->addToRoute("DRH", Time(8, 20));
-        train3->addToRoute("SHAH", Time(8, 35));
-        train3->addToRoute("KMR", Time(8, 50));
-        train3->addToRoute("LNDI", Time(9, 5));
-        trains.insert("TN003", train3);
-        
-        auto train4 = make_shared<Train>("TN004", "Metro Line", "Metro", 400, 8);
-        train4->addToRoute("KCTY", Time(9, 0));
-        train4->addToRoute("JCL", Time(9, 10));
-        train4->addToRoute("SAL", Time(9, 25));
-        train4->addToRoute("DRH", Time(9, 50));
-        train4->addToRoute("MLR", Time(10, 10));
-        trains.insert("TN004", train4);
-        
-        auto train5 = make_shared<Train>("TN005", "Business Express", "Express", 300, 10);
-        train5->addToRoute("KCTY", Time(10, 0));
-        train5->addToRoute("KC", Time(10, 8));
-        train5->addToRoute("SDHR", Time(10, 16));
-        train5->addToRoute("DRH", Time(10, 35));
-        trains.insert("TN005", train5);
     }
-    
-    // ==================== STATION MANAGEMENT ====================
     
     void addStation(const Station& station) {
-        stations[station.getId()] = station;
-        adjacencyList[station.getId()] = vector<Edge>();
+        stations.insert(station.getId(), station);
+        adjacencyList.insert(station.getId(), Vector<Edge>());
     }
     
-    bool removeStation(const string& stationId) {
-        if (stations.find(stationId) == stations.end()) {
-            return false;
-        }
+    void addEdge(const string& from, const string& to, double distance, int time, double fare) {
+        Vector<Edge>* fromEdges = adjacencyList.get(from);
+        Vector<Edge>* toEdges = adjacencyList.get(to);
         
-        stations.erase(stationId);
-        adjacencyList.erase(stationId);
-        
-        // Remove all edges to this station
-        for (auto& pair : adjacencyList) {
-            auto& edges = pair.second;
-            edges.erase(
-                remove_if(edges.begin(), edges.end(),
-                    [&stationId](const Edge& e) { return e.destination == stationId; }),
-                edges.end()
-            );
-        }
-        
-        return true;
-    }
-    
-    void displayStation(const string& stationId) {
-        if (stations.find(stationId) != stations.end()) {
-            stations[stationId].display();
-        } else {
-            cout << "Station not found!\n";
-        }
+        if (fromEdges) fromEdges->push_back(Edge(to, distance, time, fare));
+        if (toEdges) toEdges->push_back(Edge(from, distance, time, fare));
     }
     
     void displayAllStations() {
-        cout << "\n╔══════════════════════════════════════════════════════════╗\n";
-        cout << "║              KARACHI RAILWAY STATIONS                    ║\n";
-        cout << "╠══════════════════════════════════════════════════════════╣\n";
-        cout << "║ ID    │ Name                    │ Platforms │ City      ║\n";
-        cout << "╠══════════════════════════════════════════════════════════╣\n";
+        cout << "\n+===========================================================+\n";
+        cout << "|              KARACHI RAILWAY STATIONS                     |\n";
+        cout << "+===========================================================+\n";
+        cout << "| ID    | Name                    | Platforms | City        |\n";
+        cout << "+===========================================================+\n";
         
-        for (const auto& pair : stations) {
-            const Station& s = pair.second;
-            cout << "║ " << left << setw(6) << s.getId() 
-                 << "│ " << setw(24) << s.getName()
-                 << "│ " << setw(10) << s.getPlatforms()
-                 << "│ " << setw(10) << s.getCity() << "║\n";
+        Vector<Pair<string, Station>> stationVec = stations.toVector();
+        for (int i = 0; i < stationVec.getSize(); i++) {
+            const Station& s = stationVec[i].second;
+            cout << "| " << left << setw(6) << s.getId() 
+                 << "| " << setw(24) << s.getName()
+                 << "| " << setw(10) << s.getPlatforms()
+                 << "| " << setw(12) << s.getCity() << "|\n";
         }
         
-        cout << "╚══════════════════════════════════════════════════════════╝\n";
+        cout << "+===========================================================+\n";
     }
     
-    // ==================== EDGE/ROUTE MANAGEMENT ====================
-    
-    void addEdge(const string& from, const string& to, double distance, 
-                 int time, double fare) {
-        adjacencyList[from].push_back(Edge(to, distance, time, fare));
-        adjacencyList[to].push_back(Edge(from, distance, time, fare)); // Bidirectional
-    }
-    
-    void displayConnections(const string& stationId) {
-        if (adjacencyList.find(stationId) == adjacencyList.end()) {
-            cout << "Station not found!\n";
-            return;
-        }
-        
-        cout << "\n╔════════════════════════════════════════════════════════╗\n";
-        cout << "║  Connections from " << left << setw(34) << stationId << "║\n";
-        cout << "╠════════════════════════════════════════════════════════╣\n";
-        cout << "║ To      │ Distance(km) │ Time(min) │ Fare(PKR)      ║\n";
-        cout << "╠════════════════════════════════════════════════════════╣\n";
-        
-        for (const Edge& edge : adjacencyList[stationId]) {
-            cout << "║ " << left << setw(8) << edge.destination
-                 << "│ " << setw(13) << fixed << setprecision(1) << edge.distance
-                 << "│ " << setw(10) << edge.travelTime
-                 << "│ " << setw(15) << setprecision(2) << edge.fare << "║\n";
-        }
-        
-        cout << "╚════════════════════════════════════════════════════════╝\n";
-    }
-    
-    // ==================== DIJKSTRA'S SHORTEST PATH ====================
-    
-    PathInfo dijkstraShortestPath(const string& source, const string& destination,
-                                  bool byDistance = true) {
+    PathInfo dijkstraShortestPath(const string& source, const string& destination) {
         PathInfo result;
         
-        if (stations.find(source) == stations.end() || 
-            stations.find(destination) == stations.end()) {
+        if (!stations.contains(source) || !stations.contains(destination)) {
             cout << "Invalid source or destination!\n";
             return result;
         }
         
-        unordered_map<string, double> dist;
-        unordered_map<string, int> time;
-        unordered_map<string, double> fare;
-        unordered_map<string, string> parent;
-        unordered_map<string, bool> visited;
+        Map<string, double> dist;
+        Map<string, int> time;
+        Map<string, double> fare;
+        Map<string, string> parent;
+        Set<string> visited;
         
-        // Initialize
-        for (const auto& pair : stations) {
-            dist[pair.first] = numeric_limits<double>::max();
-            time[pair.first] = INT_MAX;
-            fare[pair.first] = numeric_limits<double>::max();
-            visited[pair.first] = false;
+        Vector<Pair<string, Station>> stationVec = stations.toVector();
+        for (int i = 0; i < stationVec.getSize(); i++) {
+            dist.insert(stationVec[i].first, numeric_limits<double>::max());
+            time.insert(stationVec[i].first, INT_MAX);
+            fare.insert(stationVec[i].first, numeric_limits<double>::max());
         }
         
-        dist[source] = 0;
-        time[source] = 0;
-        fare[source] = 0;
+        dist.insert(source, 0);
+        time.insert(source, 0);
+        fare.insert(source, 0);
         
-        // Priority queue: (distance/time, station)
-        priority_queue<pair<double, string>, 
-                      vector<pair<double, string>>,
-                      greater<pair<double, string>>> pq;
-        
-        pq.push({0, source});
+        MinPriorityQueue<Pair<double, string>> pq;
+        pq.push(makePair(0.0, source));
         
         while (!pq.empty()) {
             string u = pq.top().second;
             pq.pop();
             
-            if (visited[u]) continue;
-            visited[u] = true;
+            if (visited.contains(u)) continue;
+            visited.insert(u);
             
             if (u == destination) break;
             
-            for (const Edge& edge : adjacencyList[u]) {
-                string v = edge.destination;
-                double weight = byDistance ? edge.distance : edge.travelTime;
-                
-                if (!visited[v] && dist[u] + weight < dist[v]) {
-                    dist[v] = dist[u] + weight;
-                    time[v] = time[u] + edge.travelTime;
-                    fare[v] = fare[u] + edge.fare;
-                    parent[v] = u;
-                    pq.push({dist[v], v});
+            const Vector<Edge>* edges = adjacencyList.get(u);
+            if (edges) {
+                for (int i = 0; i < edges->getSize(); i++) {
+                    const Edge& edge = (*edges)[i];
+                    string v = edge.destination;
+                    
+                    const double* uDist = dist.get(u);
+                    const double* vDist = dist.get(v);
+                    
+                    if (!visited.contains(v) && uDist && vDist && *uDist + edge.distance < *vDist) {
+                        dist.insert(v, *uDist + edge.distance);
+                        time.insert(v, *time.get(u) + edge.travelTime);
+                        fare.insert(v, *fare.get(u) + edge.fare);
+                        parent.insert(v, u);
+                        pq.push(makePair(*uDist + edge.distance, v));
+                    }
                 }
             }
         }
         
-        // Reconstruct path
-        if (dist[destination] == numeric_limits<double>::max()) {
+        const double* destDist = dist.get(destination);
+        if (!destDist || *destDist == numeric_limits<double>::max()) {
             cout << "No path found!\n";
             return result;
         }
@@ -801,186 +1277,45 @@ public:
         string current = destination;
         while (current != source) {
             result.path.push_back(current);
-            current = parent[current];
+            const string* p = parent.get(current);
+            if (!p) break;
+            current = *p;
         }
         result.path.push_back(source);
-        reverse(result.path.begin(), result.path.end());
         
-        result.totalDistance = dist[destination];
-        result.totalTime = time[destination];
-        result.totalFare = fare[destination];
+        // Reverse path
+        for (int i = 0; i < result.path.getSize() / 2; i++) {
+            string temp = result.path[i];
+            result.path[i] = result.path[result.path.getSize() - 1 - i];
+            result.path[result.path.getSize() - 1 - i] = temp;
+        }
+        
+        result.totalDistance = *destDist;
+        result.totalTime = *time.get(destination);
+        result.totalFare = *fare.get(destination);
         
         return result;
     }
     
     void displayShortestPath(const string& source, const string& destination) {
-        cout << "\n╔════════════════════════════════════════════════════════╗\n";
-        cout << "║           SHORTEST PATH ANALYSIS                       ║\n";
-        cout << "╠════════════════════════════════════════════════════════╣\n";
+        cout << "\n+========================================================+\n";
+        cout << "|           SHORTEST PATH ANALYSIS                       |\n";
+        cout << "+========================================================+\n";
         
-        // By Distance
-        PathInfo pathByDist = dijkstraShortestPath(source, destination, true);
-        cout << "║ By Distance:                                           ║\n";
-        cout << "║ Route: ";
-        for (size_t i = 0; i < pathByDist.path.size(); i++) {
-            cout << pathByDist.path[i];
-            if (i < pathByDist.path.size() - 1) cout << " → ";
-        }
-        cout << "\n║ Total Distance: " << fixed << setprecision(2) 
-             << pathByDist.totalDistance << " km\n";
-        cout << "║ Total Time: " << pathByDist.totalTime << " minutes\n";
-        cout << "║ Total Fare: PKR " << pathByDist.totalFare << "\n";
-        cout << "╠════════════════════════════════════════════════════════╣\n";
+        PathInfo path = dijkstraShortestPath(source, destination);
+        if (path.path.empty()) return;
         
-        // By Time
-        PathInfo pathByTime = dijkstraShortestPath(source, destination, false);
-        cout << "║ By Time:                                               ║\n";
-        cout << "║ Route: ";
-        for (size_t i = 0; i < pathByTime.path.size(); i++) {
-            cout << pathByTime.path[i];
-            if (i < pathByTime.path.size() - 1) cout << " → ";
+        cout << "| Route: ";
+        for (int i = 0; i < path.path.getSize(); i++) {
+            cout << path.path[i];
+            if (i < path.path.getSize() - 1) cout << " -> ";
         }
-        cout << "\n║ Total Distance: " << fixed << setprecision(2) 
-             << pathByTime.totalDistance << " km\n";
-        cout << "║ Total Time: " << pathByTime.totalTime << " minutes\n";
-        cout << "║ Total Fare: PKR " << pathByTime.totalFare << "\n";
-        cout << "╚════════════════════════════════════════════════════════╝\n";
+        cout << "\n| Total Distance: " << fixed << setprecision(2) 
+             << path.totalDistance << " km\n";
+        cout << "| Total Time: " << path.totalTime << " minutes\n";
+        cout << "| Total Fare: PKR " << path.totalFare << "\n";
+        cout << "+========================================================+\n";
     }
-    
-    // ==================== ALL POSSIBLE PATHS (DFS) ====================
-    
-    void findAllPathsDFS(const string& current, const string& destination,
-                        unordered_set<string>& visited,
-                        vector<string>& currentPath,
-                        vector<PathInfo>& allPaths,
-                        double currentDist, int currentTime, double currentFare) {
-        
-        visited.insert(current);
-        currentPath.push_back(current);
-        
-        if (current == destination) {
-            PathInfo path;
-            path.path = currentPath;
-            path.totalDistance = currentDist;
-            path.totalTime = currentTime;
-            path.totalFare = currentFare;
-            allPaths.push_back(path);
-        } else {
-            for (const Edge& edge : adjacencyList[current]) {
-                if (visited.find(edge.destination) == visited.end()) {
-                    findAllPathsDFS(edge.destination, destination, visited, currentPath,
-                                   allPaths, currentDist + edge.distance,
-                                   currentTime + edge.travelTime,
-                                   currentFare + edge.fare);
-                }
-            }
-        }
-        
-        currentPath.pop_back();
-        visited.erase(current);
-    }
-    
-    vector<PathInfo> findAllPaths(const string& source, const string& destination,
-                                   int maxPaths = 10) {
-        vector<PathInfo> allPaths;
-        unordered_set<string> visited;
-        vector<string> currentPath;
-        
-        if (stations.find(source) == stations.end() || 
-            stations.find(destination) == stations.end()) {
-            cout << "Invalid source or destination!\n";
-            return allPaths;
-        }
-        
-        findAllPathsDFS(source, destination, visited, currentPath, allPaths, 0, 0, 0);
-        
-        // Sort by distance
-        sort(allPaths.begin(), allPaths.end(),
-            [](const PathInfo& a, const PathInfo& b) {
-                return a.totalDistance < b.totalDistance;
-            });
-        
-        // Return only top paths
-        if (allPaths.size() > maxPaths) {
-            allPaths.resize(maxPaths);
-        }
-        
-        return allPaths;
-    }
-    
-    void displayAllPaths(const string& source, const string& destination) {
-        vector<PathInfo> paths = findAllPaths(source, destination);
-        
-        if (paths.empty()) {
-            cout << "No paths found!\n";
-            return;
-        }
-        
-        cout << "\n╔═══════════════════════════════════════════════════════════╗\n";
-        cout << "║         ALL POSSIBLE ROUTES FROM " << source << " TO " << destination << "          ║\n";
-        cout << "╠═══════════════════════════════════════════════════════════╣\n";
-        
-        for (size_t i = 0; i < paths.size(); i++) {
-            cout << "║ Route " << (i + 1) << ":                                                ║\n";
-            cout << "║ Path: ";
-            for (size_t j = 0; j < paths[i].path.size(); j++) {
-                cout << paths[i].path[j];
-                if (j < paths[i].path.size() - 1) cout << " → ";
-            }
-            cout << "\n║ Distance: " << fixed << setprecision(2) 
-                 << paths[i].totalDistance << " km │ ";
-            cout << "Time: " << paths[i].totalTime << " min │ ";
-            cout << "Fare: PKR " << paths[i].totalFare << "\n";
-            cout << "╠═══════════════════════════════════════════════════════════╣\n";
-        }
-        
-        cout << "╚═══════════════════════════════════════════════════════════╝\n";
-    }
-    
-    // ==================== TRAIN MANAGEMENT ====================
-    
-    void addTrain(shared_ptr<Train> train) {
-        trains.insert(train->getId(), train);
-    }
-    
-    void displayTrain(const string& trainId) {
-        shared_ptr<Train> train;
-        if (trains.find(trainId, train)) {
-            train->display();
-        } else {
-            cout << "Train not found!\n";
-        }
-    }
-    
-    void displayAllTrains() {
-        auto allTrains = trains.getAllEntries();
-        
-        if (allTrains.empty()) {
-            cout << "No trains in the system.\n";
-            return;
-        }
-        
-        cout << "\n╔═══════════════════════════════════════════════════════════════╗\n";
-        cout << "║                    ALL TRAINS IN SYSTEM                       ║\n";
-        cout << "╠═══════════════════════════════════════════════════════════════╣\n";
-        
-        for (const auto& pair : allTrains) {
-            pair.second->display();
-        }
-    }
-    
-    void setTrainDelay(const string& trainId, int delayMinutes) {
-        shared_ptr<Train> train;
-        if (trains.find(trainId, train)) {
-            train->setDelay(delayMinutes);
-            cout << "Delay of " << delayMinutes << " minutes set for train " 
-                 << trainId << "\n";
-        } else {
-            cout << "Train not found!\n";
-        }
-    }
-    
-    // ==================== PASSENGER MANAGEMENT ====================
     
     string addPassenger(const string& name, const string& cnic, 
                        const string& phone, int age) {
@@ -999,87 +1334,27 @@ public:
         }
     }
     
-    void addPassengerToQueue(const string& stationId, const string& passengerId,
-                            int priority = 5) {
-        Passenger p;
-        if (!passengers.find(passengerId, p)) {
-            cout << "Passenger not found!\n";
-            return;
-        }
-        
-        if (stations.find(stationId) == stations.end()) {
-            cout << "Station not found!\n";
-            return;
-        }
-        
-        time_t now = time(0);
-        tm* ltm = localtime(&now);
-        Time currentTime(ltm->tm_hour, ltm->tm_min);
-        
-        stationQueues[stationId].enqueue(p, priority, currentTime);
-        cout << "Passenger " << p.getName() << " added to queue at " 
-             << stationId << "\n";
-    }
-    
-    void processPassengerQueue(const string& stationId) {
-        if (stationQueues.find(stationId) == stationQueues.end() ||
-            stationQueues[stationId].isEmpty()) {
-            cout << "No passengers in queue at " << stationId << "\n";
-            return;
-        }
-        
-        Passenger p = stationQueues[stationId].dequeue();
-        cout << "Processing passenger: " << p.getName() << "\n";
-    }
-    
-    void displayStationQueue(const string& stationId) {
-        if (stationQueues.find(stationId) == stationQueues.end()) {
-            cout << "No queue at station " << stationId << "\n";
-            return;
-        }
-        
-        cout << "\nQueue at Station: " << stationId << "\n";
-        stationQueues[stationId].display();
-    }
-    
-    // ==================== TICKET BOOKING ====================
-    
     string bookTicket(const string& passengerId, const string& trainId,
                      const string& from, const string& to) {
-        // Validate passenger
         Passenger p;
         if (!passengers.find(passengerId, p)) {
             cout << "Passenger not found!\n";
             return "";
         }
         
-        // Validate train
-        shared_ptr<Train> train;
+        SharedPtr<Train> train;
         if (!trains.find(trainId, train)) {
             cout << "Train not found!\n";
             return "";
         }
         
-        // Check if train covers this route
-        vector<string> route = train->getRoute();
-        auto fromIt = find(route.begin(), route.end(), from);
-        auto toIt = find(route.begin(), route.end(), to);
-        
-        if (fromIt == route.end() || toIt == route.end() || fromIt >= toIt) {
-            cout << "Train does not cover this route!\n";
-            return "";
-        }
-        
-        // Check seat availability
         if (!train->bookSeat()) {
             cout << "No seats available!\n";
             return "";
         }
         
-        // Calculate fare based on shortest path
-        PathInfo path = dijkstraShortestPath(from, to, true);
+        PathInfo path = dijkstraShortestPath(from, to);
         
-        // Create ticket
         string ticketId = "T" + to_string(ticketCounter++);
         time_t now = time(0);
         tm* ltm = localtime(&now);
@@ -1093,7 +1368,7 @@ public:
         
         tickets.insert(ticketId, ticket);
         
-        cout << "\n✓ Ticket booked successfully!\n";
+        cout << "\n[SUCCESS] Ticket booked successfully!\n";
         cout << "Ticket ID: " << ticketId << "\n";
         
         return ticketId;
@@ -1108,190 +1383,51 @@ public:
         }
     }
     
-    void cancelTicket(const string& ticketId) {
-        Ticket t;
-        if (tickets.find(ticketId, t)) {
-            if (!t.getBookingStatus()) {
-                cout << "Ticket already cancelled!\n";
-                return;
-            }
-            
-            // Release seat
-            shared_ptr<Train> train;
-            if (trains.find(t.getTrainId(), train)) {
-                train->releaseSeat();
-            }
-            
-            t.cancelTicket();
-            tickets.insert(ticketId, t); // Update
-            cout << "Ticket " << ticketId << " cancelled successfully!\n";
-        } else {
-            cout << "Ticket not found!\n";
+    void displayAllTrains() {
+        Vector<Pair<string, SharedPtr<Train>>> allTrains = trains.getAllEntries();
+        
+        cout << "\n+============================================================+\n";
+        cout << "|                    ALL TRAINS IN SYSTEM                    |\n";
+        cout << "+============================================================+\n";
+        
+        for (int i = 0; i < allTrains.getSize(); i++) {
+            allTrains[i].second->display();
         }
     }
-    
-    // ==================== SORTING & ANALYSIS ====================
-    
-    void displayTrainsByPriority() {
-        auto allTrains = trains.getAllEntries();
-        
-        // Sort by priority (descending)
-        sort(allTrains.begin(), allTrains.end(),
-            [](const pair<string, shared_ptr<Train>>& a,
-               const pair<string, shared_ptr<Train>>& b) {
-                return a.second->getPriority() > b.second->getPriority();
-            });
-        
-        cout << "\n╔═══════════════════════════════════════════════════════╗\n";
-        cout << "║         TRAINS SORTED BY PRIORITY                     ║\n";
-        cout << "╠═══════════════════════════════════════════════════════╣\n";
-        cout << "║ ID    │ Name              │ Priority │ Delay(min)   ║\n";
-        cout << "╠═══════════════════════════════════════════════════════╣\n";
-        
-        for (const auto& pair : allTrains) {
-            auto train = pair.second;
-            cout << "║ " << left << setw(6) << train->getId()
-                 << "│ " << setw(18) << train->getName()
-                 << "│ " << setw(9) << train->getPriority()
-                 << "│ " << setw(13) << train->getDelay() << "║\n";
-        }
-        
-        cout << "╚═══════════════════════════════════════════════════════╝\n";
-    }
-    
-    void displayTrainSchedule(const string& stationId) {
-        auto allTrains = trains.getAllEntries();
-        vector<pair<Time, shared_ptr<Train>>> schedule;
-        
-        for (const auto& pair : allTrains) {
-            auto train = pair.second;
-            auto trainSchedule = train->getSchedule();
-            
-            if (trainSchedule.find(stationId) != trainSchedule.end()) {
-                Time arrivalTime = train->getArrivalTime(stationId);
-                schedule.push_back({arrivalTime, train});
-            }
-        }
-        
-        // Sort by time
-        sort(schedule.begin(), schedule.end(),
-            [](const pair<Time, shared_ptr<Train>>& a,
-               const pair<Time, shared_ptr<Train>>& b) {
-                return a.first < b.first;
-            });
-        
-        cout << "\n╔════════════════════════════════════════════════════════╗\n";
-        cout << "║       TRAIN SCHEDULE AT " << left << setw(28) << stationId << "║\n";
-        cout << "╠════════════════════════════════════════════════════════╣\n";
-        cout << "║ Time  │ Train ID │ Train Name          │ Delay       ║\n";
-        cout << "╠════════════════════════════════════════════════════════╣\n";
-        
-        for (const auto& entry : schedule) {
-            Time t = entry.first;
-            auto train = entry.second;
-            cout << "║ " << setw(6) << t.toString()
-                 << "│ " << setw(9) << train->getId()
-                 << "│ " << setw(20) << train->getName()
-                 << "│ " << setw(8) << train->getDelay() << " min║\n";
-        }
-        
-        cout << "╚════════════════════════════════════════════════════════╝\n";
-    }
-    
-    // ==================== STATISTICS ====================
     
     void displaySystemStatistics() {
-        auto allTrains = trains.getAllEntries();
-        auto allTickets = tickets.getAllEntries();
-        auto allPassengers = passengers.getAllEntries();
+        Vector<Pair<string, SharedPtr<Train>>> allTrains = trains.getAllEntries();
+        Vector<Pair<string, Ticket>> allTickets = tickets.getAllEntries();
+        Vector<Pair<string, Passenger>> allPassengers = passengers.getAllEntries();
         
         int totalSeats = 0;
         int bookedSeats = 0;
         double totalRevenue = 0;
         int activeTickets = 0;
         
-        for (const auto& pair : allTrains) {
-            auto train = pair.second;
-            totalSeats += 500; // Assuming default
-            bookedSeats += (500 - train->getAvailableSeats());
+        for (int i = 0; i < allTrains.getSize(); i++) {
+            totalSeats += 500;
+            bookedSeats += (500 - allTrains[i].second->getAvailableSeats());
         }
         
-        for (const auto& pair : allTickets) {
-            if (pair.second.getBookingStatus()) {
-                totalRevenue += pair.second.getFare();
+        for (int i = 0; i < allTickets.getSize(); i++) {
+            if (allTickets[i].second.getBookingStatus()) {
+                totalRevenue += allTickets[i].second.getFare();
                 activeTickets++;
             }
         }
         
-        cout << "\n╔════════════════════════════════════════════════════════╗\n";
-        cout << "║           RAILWAY SYSTEM STATISTICS                    ║\n";
-        cout << "╠════════════════════════════════════════════════════════╣\n";
-        cout << "║ Total Stations        : " << left << setw(28) 
-             << stations.size() << "║\n";
-        cout << "║ Total Trains          : " << setw(28) 
-             << allTrains.size() << "║\n";
-        cout << "║ Total Passengers      : " << setw(28) 
-             << allPassengers.size() << "║\n";
-        cout << "║ Active Tickets        : " << setw(28) 
-             << activeTickets << "║\n";
-        cout << "║ Total Seats           : " << setw(28) 
-             << totalSeats << "║\n";
-        cout << "║ Booked Seats          : " << setw(28) 
-             << bookedSeats << "║\n";
-        cout << "║ Occupancy Rate        : " << setw(24) 
-             << fixed << setprecision(2) 
-             << (totalSeats > 0 ? (bookedSeats * 100.0 / totalSeats) : 0) 
-             << " %  ║\n";
-        cout << "║ Total Revenue         : PKR " << setw(24) 
-             << setprecision(2) << totalRevenue << "║\n";
-        cout << "╚════════════════════════════════════════════════════════╝\n";
-    }
-    
-    // ==================== SEARCH FUNCTIONS ====================
-    
-    void searchTrainsByRoute(const string& stationId) {
-        auto allTrains = trains.getAllEntries();
-        vector<shared_ptr<Train>> matchingTrains;
-        
-        for (const auto& pair : allTrains) {
-            auto route = pair.second->getRoute();
-            if (find(route.begin(), route.end(), stationId) != route.end()) {
-                matchingTrains.push_back(pair.second);
-            }
-        }
-        
-        if (matchingTrains.empty()) {
-            cout << "No trains pass through " << stationId << "\n";
-            return;
-        }
-        
-        cout << "\n╔════════════════════════════════════════════════════════╗\n";
-        cout << "║    TRAINS PASSING THROUGH " << left << setw(27) << stationId << "║\n";
-        cout << "╠════════════════════════════════════════════════════════╣\n";
-        
-        for (auto train : matchingTrains) {
-            cout << "║ " << setw(8) << train->getId() 
-                 << " │ " << setw(43) << train->getName() << "║\n";
-        }
-        
-        cout << "╚════════════════════════════════════════════════════════╝\n";
-    }
-    
-    vector<string> getStationIds() const {
-        vector<string> ids;
-        for (const auto& pair : stations) {
-            ids.push_back(pair.first);
-        }
-        return ids;
-    }
-    
-    vector<string> getTrainIds() const {
-        vector<string> ids;
-        auto allTrains = trains.getAllEntries();
-        for (const auto& pair : allTrains) {
-            ids.push_back(pair.first);
-        }
-        return ids;
+        cout << "\n+========================================================+\n";
+        cout << "|           RAILWAY SYSTEM STATISTICS                    |\n";
+        cout << "+========================================================+\n";
+        cout << "| Total Stations        : " << stations.size() << "\n";
+        cout << "| Total Trains          : " << allTrains.getSize() << "\n";
+        cout << "| Total Passengers      : " << allPassengers.getSize() << "\n";
+        cout << "| Active Tickets        : " << activeTickets << "\n";
+        cout << "| Total Seats           : " << totalSeats << "\n";
+        cout << "| Booked Seats          : " << bookedSeats << "\n";
+        cout << "| Total Revenue         : PKR " << fixed << setprecision(2) << totalRevenue << "\n";
+        cout << "+========================================================+\n";
     }
 };
 
@@ -1315,22 +1451,24 @@ private:
         cin.get();
     }
     
-    void displayHeader() {
-        cout << "\n";
-        cout << "╔═══════════════════════════════════════════════════════════╗\n";
-        cout << "║     SMART RAILWAY SCHEDULING SYSTEM - KARACHI             ║\n";
-        cout << "║              Pakistan Railways Network                    ║\n";
-        cout << "╚═══════════════════════════════════════════════════════════╝\n";
-    }
-    
 public:
     MenuSystem(RailwayGraph& rg) : railway(rg) {}
     
     void run() {
         while (true) {
             clearScreen();
-            displayHeader();
-            displayMainMenu();
+            cout << "\n+==========================================================+\n";
+            cout << "|     SMART RAILWAY SCHEDULING SYSTEM - KARACHI            |\n";
+            cout << "+==========================================================+\n";
+            cout << "|  1. View All Stations                                    |\n";
+            cout << "|  2. View All Trains                                      |\n";
+            cout << "|  3. Find Shortest Path (Dijkstra)                        |\n";
+            cout << "|  4. Register Passenger                                   |\n";
+            cout << "|  5. Book Ticket                                          |\n";
+            cout << "|  6. View Ticket                                          |\n";
+            cout << "|  7. System Statistics                                    |\n";
+            cout << "|  0. Exit                                                 |\n";
+            cout << "+==========================================================+\n";
             
             int choice;
             cout << "\nEnter your choice: ";
@@ -1338,14 +1476,70 @@ public:
             cin.ignore();
             
             switch (choice) {
-                case 1: stationManagementMenu(); break;
-                case 2: trainManagementMenu(); break;
-                case 3: passengerManagementMenu(); break;
-                case 4: ticketManagementMenu(); break;
-                case 5: routeAnalysisMenu(); break;
-                case 6: scheduleManagementMenu(); break;
-                case 7: queueManagementMenu(); break;
-                case 8: statisticsMenu(); break;
+                case 1:
+                    railway.displayAllStations();
+                    pause();
+                    break;
+                case 2:
+                    railway.displayAllTrains();
+                    pause();
+                    break;
+                case 3: {
+                    string from, to;
+                    cout << "Enter Source Station: ";
+                    cin >> from;
+                    cout << "Enter Destination Station: ";
+                    cin >> to;
+                    cin.ignore();
+                    railway.displayShortestPath(from, to);
+                    pause();
+                    break;
+                }
+                case 4: {
+                    string name, cnic, phone;
+                    int age;
+                    cout << "Enter Name: ";
+                    getline(cin, name);
+                    cout << "Enter CNIC: ";
+                    cin >> cnic;
+                    cout << "Enter Phone: ";
+                    cin >> phone;
+                    cout << "Enter Age: ";
+                    cin >> age;
+                    cin.ignore();
+                    string id = railway.addPassenger(name, cnic, phone, age);
+                    cout << "\n[SUCCESS] Passenger registered! ID: " << id << "\n";
+                    pause();
+                    break;
+                }
+                case 5: {
+                    string passengerId, trainId, from, to;
+                    cout << "Enter Passenger ID: ";
+                    cin >> passengerId;
+                    cout << "Enter Train ID: ";
+                    cin >> trainId;
+                    cout << "Enter From Station: ";
+                    cin >> from;
+                    cout << "Enter To Station: ";
+                    cin >> to;
+                    cin.ignore();
+                    railway.bookTicket(passengerId, trainId, from, to);
+                    pause();
+                    break;
+                }
+                case 6: {
+                    string ticketId;
+                    cout << "Enter Ticket ID: ";
+                    cin >> ticketId;
+                    cin.ignore();
+                    railway.displayTicket(ticketId);
+                    pause();
+                    break;
+                }
+                case 7:
+                    railway.displaySystemStatistics();
+                    pause();
+                    break;
                 case 0:
                     cout << "\nThank you for using Railway System!\n";
                     return;
@@ -1355,479 +1549,31 @@ public:
             }
         }
     }
-    
-    void displayMainMenu() {
-        cout << "\n╔═══════════════════════════════════════════════════════════╗\n";
-        cout << "║                      MAIN MENU                            ║\n";
-        cout << "╠═══════════════════════════════════════════════════════════╣\n";
-        cout << "║  1. Station Management                                    ║\n";
-        cout << "║  2. Train Management                                      ║\n";
-        cout << "║  3. Passenger Management                                  ║\n";
-        cout << "║  4. Ticket Management                                     ║\n";
-        cout << "║  5. Route Analysis (Dijkstra & All Paths)                 ║\n";
-        cout << "║  6. Schedule Management                                   ║\n";
-        cout << "║  7. Queue Management                                      ║\n";
-        cout << "║  8. Statistics & Reports                                  ║\n";
-        cout << "║  0. Exit                                                  ║\n";
-        cout << "╚═══════════════════════════════════════════════════════════╝\n";
-    }
-    
-    void stationManagementMenu() {
-        while (true) {
-            clearScreen();
-            displayHeader();
-            cout << "\n╔═══════════════════════════════════════════════════════════╗\n";
-            cout << "║               STATION MANAGEMENT                          ║\n";
-            cout << "╠═══════════════════════════════════════════════════════════╣\n";
-            cout << "║  1. View All Stations                                     ║\n";
-            cout << "║  2. View Station Details                                  ║\n";
-            cout << "║  3. View Station Connections                              ║\n";
-            cout << "║  4. Search Trains by Station                              ║\n";
-            cout << "║  0. Back to Main Menu                                     ║\n";
-            cout << "╚═══════════════════════════════════════════════════════════╝\n";
-            
-            int choice;
-            cout << "\nEnter your choice: ";
-            cin >> choice;
-            cin.ignore();
-            
-            if (choice == 0) break;
-            
-            switch (choice) {
-                case 1:
-                    railway.displayAllStations();
-                    pause();
-                    break;
-                case 2: {
-                    string stationId;
-                    cout << "Enter Station ID: ";
-                    cin >> stationId;
-                    railway.displayStation(stationId);
-                    pause();
-                    break;
-                }
-                case 3: {
-                    string stationId;
-                    cout << "Enter Station ID: ";
-                    cin >> stationId;
-                    railway.displayConnections(stationId);
-                    pause();
-                    break;
-                }
-                case 4: {
-                    string stationId;
-                    cout << "Enter Station ID: ";
-                    cin >> stationId;
-                    railway.searchTrainsByRoute(stationId);
-                    pause();
-                    break;
-                }
-                default:
-                    cout << "Invalid choice!\n";
-                    pause();
-            }
-        }
-    }
-    
-    void trainManagementMenu() {
-        while (true) {
-            clearScreen();
-            displayHeader();
-            cout << "\n╔═══════════════════════════════════════════════════════════╗\n";
-            cout << "║                TRAIN MANAGEMENT                           ║\n";
-            cout << "╠═══════════════════════════════════════════════════════════╣\n";
-            cout << "║  1. View All Trains                                       ║\n";
-            cout << "║  2. View Train Details                                    ║\n";
-            cout << "║  3. View Trains by Priority                               ║\n";
-            cout << "║  4. Set Train Delay                                       ║\n";
-            cout << "║  0. Back to Main Menu                                     ║\n";
-            cout << "╚═══════════════════════════════════════════════════════════╝\n";
-            
-            int choice;
-            cout << "\nEnter your choice: ";
-            cin >> choice;
-            cin.ignore();
-            
-            if (choice == 0) break;
-            
-            switch (choice) {
-                case 1:
-                    railway.displayAllTrains();
-                    pause();
-                    break;
-                case 2: {
-                    string trainId;
-                    cout << "Enter Train ID: ";
-                    cin >> trainId;
-                    railway.displayTrain(trainId);
-                    pause();
-                    break;
-                }
-                case 3:
-                    railway.displayTrainsByPriority();
-                    pause();
-                    break;
-                case 4: {
-                    string trainId;
-                    int delay;
-                    cout << "Enter Train ID: ";
-                    cin >> trainId;
-                    cout << "Enter Delay (minutes): ";
-                    cin >> delay;
-                    railway.setTrainDelay(trainId, delay);
-                    pause();
-                    break;
-                }
-                default:
-                    cout << "Invalid choice!\n";
-                    pause();
-            }
-        }
-    }
-    
-    void passengerManagementMenu() {
-        while (true) {
-            clearScreen();
-            displayHeader();
-            cout << "\n╔═══════════════════════════════════════════════════════════╗\n";
-            cout << "║              PASSENGER MANAGEMENT                         ║\n";
-            cout << "╠═══════════════════════════════════════════════════════════╣\n";
-            cout << "║  1. Register New Passenger                                ║\n";
-            cout << "║  2. View Passenger Details                                ║\n";
-            cout << "║  0. Back to Main Menu                                     ║\n";
-            cout << "╚═══════════════════════════════════════════════════════════╝\n";
-            
-            int choice;
-            cout << "\nEnter your choice: ";
-            cin >> choice;
-            cin.ignore();
-            
-            if (choice == 0) break;
-            
-            switch (choice) {
-                case 1: {
-                    string name, cnic, phone;
-                    int age;
-                    
-                    cout << "Enter Name: ";
-                    getline(cin, name);
-                    cout << "Enter CNIC: ";
-                    cin >> cnic;
-                    cout << "Enter Phone: ";
-                    cin >> phone;
-                    cout << "Enter Age: ";
-                    cin >> age;
-                    
-                    string passengerId = railway.addPassenger(name, cnic, phone, age);
-                    cout << "\n✓ Passenger registered successfully!\n";
-                    cout << "Passenger ID: " << passengerId << "\n";
-                    pause();
-                    break;
-                }
-                case 2: {
-                    string passengerId;
-                    cout << "Enter Passenger ID: ";
-                    cin >> passengerId;
-                    railway.displayPassenger(passengerId);
-                    pause();
-                    break;
-                }
-                default:
-                    cout << "Invalid choice!\n";
-                    pause();
-            }
-        }
-    }
-    
-    void ticketManagementMenu() {
-        while (true) {
-            clearScreen();
-            displayHeader();
-            cout << "\n╔═══════════════════════════════════════════════════════════╗\n";
-            cout << "║               TICKET MANAGEMENT                           ║\n";
-            cout << "╠═══════════════════════════════════════════════════════════╣\n";
-            cout << "║  1. Book Ticket                                           ║\n";
-            cout << "║  2. View Ticket                                           ║\n";
-            cout << "║  3. Cancel Ticket                                         ║\n";
-            cout << "║  0. Back to Main Menu                                     ║\n";
-            cout << "╚═══════════════════════════════════════════════════════════╝\n";
-            
-            int choice;
-            cout << "\nEnter your choice: ";
-            cin >> choice;
-            cin.ignore();
-            
-            if (choice == 0) break;
-            
-            switch (choice) {
-                case 1: {
-                    string passengerId, trainId, from, to;
-                    
-                    cout << "Enter Passenger ID: ";
-                    cin >> passengerId;
-                    cout << "Enter Train ID: ";
-                    cin >> trainId;
-                    cout << "Enter From Station: ";
-                    cin >> from;
-                    cout << "Enter To Station: ";
-                    cin >> to;
-                    
-                    string ticketId = railway.bookTicket(passengerId, trainId, from, to);
-                    if (!ticketId.empty()) {
-                        railway.displayTicket(ticketId);
-                    }
-                    pause();
-                    break;
-                }
-                case 2: {
-                    string ticketId;
-                    cout << "Enter Ticket ID: ";
-                    cin >> ticketId;
-                    railway.displayTicket(ticketId);
-                    pause();
-                    break;
-                }
-                case 3: {
-                    string ticketId;
-                    cout << "Enter Ticket ID: ";
-                    cin >> ticketId;
-                    railway.cancelTicket(ticketId);
-                    pause();
-                    break;
-                }
-                default:
-                    cout << "Invalid choice!\n";
-                    pause();
-            }
-        }
-    }
-    
-    void routeAnalysisMenu() {
-        while (true) {
-            clearScreen();
-            displayHeader();
-            cout << "\n╔═══════════════════════════════════════════════════════════╗\n";
-            cout << "║          ROUTE ANALYSIS (ADVANCED ALGORITHMS)             ║\n";
-            cout << "╠═══════════════════════════════════════════════════════════╣\n";
-            cout << "║  1. Find Shortest Path (Dijkstra)                         ║\n";
-            cout << "║  2. Find All Possible Paths (DFS)                         ║\n";
-            cout << "║  3. Compare All Algorithms                                ║\n";
-            cout << "║  0. Back to Main Menu                                     ║\n";
-            cout << "╚═══════════════════════════════════════════════════════════╝\n";
-            
-            int choice;
-            cout << "\nEnter your choice: ";
-            cin >> choice;
-            cin.ignore();
-            
-            if (choice == 0) break;
-            
-            string from, to;
-            
-            if (choice >= 1 && choice <= 3) {
-                cout << "Enter Source Station: ";
-                cin >> from;
-                cout << "Enter Destination Station: ";
-                cin >> to;
-            }
-            
-            switch (choice) {
-                case 1:
-                    railway.displayShortestPath(from, to);
-                    pause();
-                    break;
-                case 2:
-                    railway.displayAllPaths(from, to);
-                    pause();
-                    break;
-                case 3:
-                    railway.displayShortestPath(from, to);
-                    cout << "\n";
-                    railway.displayAllPaths(from, to);
-                    pause();
-                    break;
-                default:
-                    cout << "Invalid choice!\n";
-                    pause();
-            }
-        }
-    }
-    
-    void scheduleManagementMenu() {
-        while (true) {
-            clearScreen();
-            displayHeader();
-            cout << "\n╔═══════════════════════════════════════════════════════════╗\n";
-            cout << "║             SCHEDULE MANAGEMENT                           ║\n";
-            cout << "╠═══════════════════════════════════════════════════════════╣\n";
-            cout << "║  1. View Station Schedule                                 ║\n";
-            cout << "║  2. View Train Schedule                                   ║\n";
-            cout << "║  0. Back to Main Menu                                     ║\n";
-            cout << "╚═══════════════════════════════════════════════════════════╝\n";
-            
-            int choice;
-            cout << "\nEnter your choice: ";
-            cin >> choice;
-            cin.ignore();
-            
-            if (choice == 0) break;
-            
-            switch (choice) {
-                case 1: {
-                    string stationId;
-                    cout << "Enter Station ID: ";
-                    cin >> stationId;
-                    railway.displayTrainSchedule(stationId);
-                    pause();
-                    break;
-                }
-                case 2: {
-                    string trainId;
-                    cout << "Enter Train ID: ";
-                    cin >> trainId;
-                    railway.displayTrain(trainId);
-                    pause();
-                    break;
-                }
-                default:
-                    cout << "Invalid choice!\n";
-                    pause();
-            }
-        }
-    }
-    
-    void queueManagementMenu() {
-        while (true) {
-            clearScreen();
-            displayHeader();
-            cout << "\n╔═══════════════════════════════════════════════════════════╗\n";
-            cout << "║              QUEUE MANAGEMENT                             ║\n";
-            cout << "╠═══════════════════════════════════════════════════════════╣\n";
-            cout << "║  1. Add Passenger to Queue                                ║\n";
-            cout << "║  2. Process Next Passenger                                ║\n";
-            cout << "║  3. View Station Queue                                    ║\n";
-            cout << "║  0. Back to Main Menu                                     ║\n";
-            cout << "╚═══════════════════════════════════════════════════════════╝\n";
-            
-            int choice;
-            cout << "\nEnter your choice: ";
-            cin >> choice;
-            cin.ignore();
-            
-            if (choice == 0) break;
-            
-            switch (choice) {
-                case 1: {
-                    string stationId, passengerId;
-                    int priority;
-                    
-                    cout << "Enter Station ID: ";
-                    cin >> stationId;
-                    cout << "Enter Passenger ID: ";
-                    cin >> passengerId;
-                    cout << "Enter Priority (1-10, higher = more important): ";
-                    cin >> priority;
-                    
-                    railway.addPassengerToQueue(stationId, passengerId, priority);
-                    pause();
-                    break;
-                }
-                case 2: {
-                    string stationId;
-                    cout << "Enter Station ID: ";
-                    cin >> stationId;
-                    railway.processPassengerQueue(stationId);
-                    pause();
-                    break;
-                }
-                case 3: {
-                    string stationId;
-                    cout << "Enter Station ID: ";
-                    cin >> stationId;
-                    railway.displayStationQueue(stationId);
-                    pause();
-                    break;
-                }
-                default:
-                    cout << "Invalid choice!\n";
-                    pause();
-            }
-        }
-    }
-    
-    void statisticsMenu() {
-        while (true) {
-            clearScreen();
-            displayHeader();
-            cout << "\n╔═══════════════════════════════════════════════════════════╗\n";
-            cout << "║            STATISTICS & REPORTS                           ║\n";
-            cout << "╠═══════════════════════════════════════════════════════════╣\n";
-            cout << "║  1. System Statistics                                     ║\n";
-            cout << "║  2. Network Overview                                      ║\n";
-            cout << "║  0. Back to Main Menu                                     ║\n";
-            cout << "╚═══════════════════════════════════════════════════════════╝\n";
-            
-            int choice;
-            cout << "\nEnter your choice: ";
-            cin >> choice;
-            cin.ignore();
-            
-            if (choice == 0) break;
-            
-            switch (choice) {
-                case 1:
-                    railway.displaySystemStatistics();
-                    pause();
-                    break;
-                case 2:
-                    railway.displayAllStations();
-                    cout << "\n";
-                    railway.displayAllTrains();
-                    pause();
-                    break;
-                default:
-                    cout << "Invalid choice!\n";
-                    pause();
-            }
-        }
-    }
 };
 
 // ==================== MAIN FUNCTION ====================
-// ==================== MAIN FUNCTION ====================
+
 int main() {
-    // ==================== AUTO UTF-8 SETUP ====================
     #ifdef _WIN32
-        // Save original console code page
         UINT originalCP = GetConsoleOutputCP();
-        
-        // Set to UTF-8
         SetConsoleOutputCP(65001);
         SetConsoleCP(65001);
-
-        
-    #endif
-    
-    // Display startup banner
-    #ifdef _WIN32
-    system("cls");
+        system("cls");
     #else
-    system("clear");
+        system("clear");
     #endif
     
-    cout << "\n";
-    cout << "    +=================================================================+\n";
-    cout << "    |                                                                 |\n";
-    cout << "    |        SMART RAILWAY SCHEDULING SYSTEM                          |\n";
-    cout << "    |        Karachi, Pakistan                                        |\n";
-    cout << "    |                                                                 |\n";
-    cout << "    |        Advanced Data Structures & Algorithms                    |\n";
-    cout << "    |        FAST NUCES - Semester 3                                  |\n";
-    cout << "    |                                                                 |\n";
-    cout << "    +=================================================================+\n";
-    cout << endl;
+    cout << "\n    +=============================================================+\n";
+    cout << "    |                                                             |\n";
+    cout << "    |        SMART RAILWAY SCHEDULING SYSTEM                      |\n";
+    cout << "    |        Karachi, Pakistan                                    |\n";
+    cout << "    |                                                             |\n";
+    cout << "    |        100% MANUAL DATA STRUCTURES - NO STL                 |\n";
+    cout << "    |        FAST NUCES - DSA Project                             |\n";
+    cout << "    |                                                             |\n";
+    cout << "    +=============================================================+\n\n";
     
-    cout << "\n  Initializing system";
+    cout << "  Initializing system";
     for(int i = 0; i < 3; i++) {
         cout << ".";
         cout.flush();
@@ -1837,20 +1583,15 @@ int main() {
             usleep(300000);
         #endif
     }
-    
     cout << " Ready!\n\n";
     cout << "  Press Enter to continue...";
     cin.get();
     
-    // Create railway graph and menu system
     RailwayGraph railway;
     MenuSystem menu(railway);
-    
     menu.run();
     
-    // ==================== CLEANUP & RESTORE ====================
     #ifdef _WIN32
-        // Restore original code page
         SetConsoleOutputCP(originalCP);
         SetConsoleCP(originalCP);
     #endif
